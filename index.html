@@ -127,8 +127,7 @@ async function openDashboard() {
     .eq('user_id',currentUser.id)
     .maybeSingle();
 
-  if(error) {
-    showMessage('message','Could not check account role: '+error.message);
+  alert('Role Error: ' + error.message);
     return;
   }
 
