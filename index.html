@@ -1,2 +1,371 @@
+index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Picture2Pixel | Client Portal</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f6fb;color:#182338}
+header{background:#142b4a;color:white;padding:22px 7%;font-size:23px;font-weight:bold}
+main{max-width:1100px;margin:35px auto;padding:16px}
+.card{background:white;border-radius:14px;padding:25px;margin-bottom:20px;box-shadow:0 4px 20px #172b4a12}
+.login{max-width:420px;margin:65px auto}
+h2{margin-top:0}
+input,select,button{width:100%;padding:13px;margin:8px 0;border:1px solid #d5dce7;border-radius:8px;font-size:15px}
+button{background:#1769d2;color:white;border:0;font-weight:bold;cursor:pointer}
+button:hover{background:#1054ae}
+.secondary{background:#263b57}
+.hidden{display:none}
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.row button{width:auto}
+.project{border:1px solid #e1e7ef;border-radius:10px;padding:16px;margin:12px 0}
+.file{padding:10px;border-bottom:1px solid #eee}
+small{color:#64748b}
+.message{color:#c0392b;white-space:pre-wrap}
+.status{font-weight:bold;color:#1769d2}
+</style>
+</head>
+<body>
+<header>Picture2Pixel <small style="color:#cbd8ea">CLIENT PORTAL</small></header>
+<main>
 
-const SUPABASE_KEY = 'আপনার সম্পূর্ণ Publishable Key';
+<section id="login" class="card login">
+<h2>Welcome Back</h2>
+<p>Sign in to access your projects and files.</p>
+<form id="loginForm">
+<input id="email" type="email" placeholder="Email address" required>
+<input id="password" type="password" placeholder="Password" required>
+<button type="submit">Sign In</button>
+</form>
+<p id="message" class="message"></p>
+</section>
+
+<section id="dashboard" class="hidden">
+<div class="card row">
+<div>
+<h2 id="dashboardTitle">My Dashboard</h2>
+<small id="userEmail"></small>
+</div>
+<button id="logout" class="secondary">Sign Out</button>
+</div>
+
+<section id="clientArea" class="hidden">
+<div class="card">
+<h2>Upload New Images</h2>
+<input id="projectName" placeholder="Project name">
+<input id="clientFiles" type="file" multiple accept="image/*,.zip">
+<button id="clientUpload">Upload Files</button>
+<p id="clientMessage" class="message"></p>
+</div>
+<div class="card">
+<h2>My Projects</h2>
+<div id="clientProjects">Loading...</div>
+</div>
+</section>
+
+<section id="adminArea" class="hidden">
+<div class="card">
+<h2>All Client Projects</h2>
+<div id="adminProjects">Loading...</div>
+</div>
+</section>
+</section>
+</main>
+
+<script type="module">
+import { createClient } from
+'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+const SUPABASE_URL = 'https://cdmtkeblxjqdhbtqbatu.supabase.co';
+const SUPABASE_KEY = 'PASTE_YOUR_PUBLISHABLE_KEY_HERE';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+
+let currentUser = null;
+let isAdmin = false;
+
+function showMessage(id, message) {
+  $(id).textContent = message;
+}
+
+function makeElement(tag, text, className) {
+  const el = document.createElement(tag);
+  el.textContent = text || '';
+  if (className) el.className = className;
+  return el;
+}
+
+$('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  showMessage('message','Signing in...');
+
+  const {data,error} = await supabase.auth.signInWithPassword({
+    email:$('email').value.trim(),
+    password:$('password').value
+  });
+
+  if(error) {
+    showMessage('message',error.message);
+    return;
+  }
+
+  currentUser = data.user;
+  await openDashboard();
+});
+
+async function openDashboard() {
+  $('login').classList.add('hidden');
+  $('dashboard').classList.remove('hidden');
+  $('userEmail').textContent = currentUser.email;
+
+  const {data,error} = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id',currentUser.id)
+    .maybeSingle();
+
+  if(error) {
+    showMessage('message','Could not check account role: '+error.message);
+    return;
+  }
+
+  isAdmin = data?.role === 'admin';
+
+  $('clientArea').classList.toggle('hidden',isAdmin);
+  $('adminArea').classList.toggle('hidden',!isAdmin);
+  $('dashboardTitle').textContent = isAdmin ? 'Admin Dashboard' : 'My Dashboard';
+
+  if(isAdmin) await loadAdminProjects();
+  else await loadClientProjects();
+}
+
+$('logout').onclick = async () => {
+  await supabase.auth.signOut();
+  currentUser = null;
+  isAdmin = false;
+  $('dashboard').classList.add('hidden');
+  $('login').classList.remove('hidden');
+};
+
+async function uploadOneFile(file,path,projectId) {
+  const {error:uploadError} = await supabase.storage
+    .from('client-files')
+    .upload(path,file);
+
+  if(uploadError) throw uploadError;
+
+  const {error:recordError} = await supabase
+    .from('project_files')
+    .insert({
+      project_id:projectId,
+      file_name:file.name,
+      file_path:path,
+      file_type:file.type || 'application/octet-stream'
+    });
+
+  if(recordError) throw recordError;
+}
+
+$('clientUpload').onclick = async () => {
+  const files = $('clientFiles').files;
+  const name = $('projectName').value.trim();
+
+  if(!name || !files.length) {
+    showMessage('clientMessage','Enter a project name and choose files.');
+    return;
+  }
+
+  showMessage('clientMessage','Creating project...');
+
+  const {data:project,error} = await supabase
+    .from('projects')
+    .insert({
+      client_id:currentUser.id,
+      project_name:name,
+      status:'Pending'
+    })
+    .select()
+    .single();
+
+  if(error) {
+    showMessage('clientMessage',error.message);
+    return;
+  }
+
+  try {
+    for(const file of files) {
+      const path = currentUser.id+'/'+project.id+'/'+
+        Date.now()+'-'+file.name;
+      await uploadOneFile(file,path,project.id);
+    }
+
+    showMessage('clientMessage','Upload completed successfully!');
+    $('projectName').value = '';
+    $('clientFiles').value = '';
+    await loadClientProjects();
+  } catch(error) {
+    showMessage('clientMessage','Upload error: '+error.message);
+  }
+};
+
+async function addDownloads(container,projectId) {
+  const {data:files,error} = await supabase
+    .from('project_files')
+    .select('*')
+    .eq('project_id',projectId);
+
+  if(error) {
+    container.append(makeElement('p',error.message,'message'));
+    return;
+  }
+
+  for(const file of files || []) {
+    const line = makeElement('div','', 'file');
+    line.append(makeElement('span',file.file_name+' '));
+
+    const download = makeElement('button','Download');
+    download.onclick = async () => {
+      const {data,error} = await supabase.storage
+        .from('client-files')
+        .createSignedUrl(file.file_path,300);
+
+      if(error) {
+        alert(error.message);
+        return;
+      }
+      window.open(data.signedUrl,'_blank');
+    };
+
+    line.append(download);
+    container.append(line);
+  }
+}
+
+async function loadClientProjects() {
+  const area = $('clientProjects');
+  area.textContent = 'Loading projects...';
+
+  const {data,error} = await supabase
+    .from('projects')
+    .select('*')
+    .order('created_at',{ascending:false});
+
+  area.textContent = '';
+
+  if(error) {
+    area.textContent = error.message;
+    return;
+  }
+
+  if(!data?.length) {
+    area.textContent = 'No projects yet.';
+    return;
+  }
+
+  for(const project of data) {
+    const card = makeElement('div','','project');
+    card.append(makeElement('h3',project.project_name));
+    card.append(makeElement('p','Status: '+project.status,'status'));
+    await addDownloads(card,project.id);
+    area.append(card);
+  }
+}
+
+async function loadAdminProjects() {
+  const area = $('adminProjects');
+  area.textContent = 'Loading all projects...';
+
+  const {data,error} = await supabase
+    .from('projects')
+    .select('*')
+    .order('created_at',{ascending:false});
+
+  area.textContent = '';
+
+  if(error) {
+    area.textContent = error.message;
+    return;
+  }
+
+  if(!data?.length) {
+    area.textContent = 'No client projects yet.';
+    return;
+  }
+
+  for(const project of data) {
+    const card = makeElement('div','','project');
+    card.append(makeElement('h3',project.project_name));
+    card.append(makeElement('small','Client ID: '+project.client_id));
+
+    const status = document.createElement('select');
+    for(const value of ['Pending','Processing','Completed']) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = value;
+      status.append(option);
+    }
+    status.value = project.status || 'Pending';
+
+    const update = makeElement('button','Update Status');
+    update.onclick = async () => {
+      const {error} = await supabase
+        .from('projects')
+        .update({status:status.value})
+        .eq('id',project.id);
+
+      if(error) alert(error.message);
+      else alert('Project status updated.');
+    };
+
+    card.append(makeElement('p','Update project status:'));
+    card.append(status);
+    card.append(update);
+
+    card.append(makeElement('h4','Upload completed files'));
+    const completedFiles = document.createElement('input');
+    completedFiles.type = 'file';
+    completedFiles.multiple = true;
+    completedFiles.accept = 'image/*,.zip';
+
+    const upload = makeElement('button','Upload Completed Files');
+    upload.onclick = async () => {
+      if(!completedFiles.files.length) {
+        alert('Please select completed files.');
+        return;
+      }
+
+      upload.disabled = true;
+      try {
+        for(const file of completedFiles.files) {
+          const path = project.client_id+'/'+project.id+
+            '/completed/'+Date.now()+'-'+file.name;
+          await uploadOneFile(file,path,project.id);
+        }
+        alert('Completed files uploaded successfully.');
+        completedFiles.value = '';
+      } catch(error) {
+        alert('Upload error: '+error.message);
+      }
+      upload.disabled = false;
+    };
+
+    card.append(completedFiles);
+    card.append(upload);
+
+    card.append(makeElement('h4','Project files'));
+    await addDownloads(card,project.id);
+    area.append(card);
+  }
+}
+
+const {data:{session}} = await supabase.auth.getSession();
+if(session) {
+  currentUser = session.user;
+  await openDashboard();
+}
+</script>
+</body>
+</html>
