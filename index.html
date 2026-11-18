@@ -127,7 +127,8 @@ async function openDashboard() {
     .eq('user_id',currentUser.id)
     .maybeSingle();
 
-  alert('Role Error: ' + error.message);
+   if(error) {
+    alert('Role Error: ' + error.message);
     return;
   }
 
