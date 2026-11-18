@@ -236,7 +236,12 @@ async function addDownloads(container,projectId) {
         alert(error.message);
         return;
       }
-      window.open(data.signedUrl,'_blank');
+      const link = document.createElement('a');
+link.href = data.signedUrl;
+link.download = file.file_name;
+document.body.appendChild(link);
+link.click();
+link.remove();
     };
 
     line.append(download);
