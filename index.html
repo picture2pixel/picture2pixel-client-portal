@@ -133,7 +133,7 @@ async function openDashboard() {
   }
 
   isAdmin = data?.role === 'admin';
-
+alert('User ID: ' + currentUser.id + '\nRole: ' + (data?.role ?? 'NOT FOUND'));
   $('clientArea').classList.toggle('hidden',isAdmin);
   $('adminArea').classList.toggle('hidden',!isAdmin);
   $('dashboardTitle').textContent = isAdmin ? 'Admin Dashboard' : 'My Dashboard';
