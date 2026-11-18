@@ -347,7 +347,6 @@ async function loadAdminProjects() {
 
     const upload = makeElement('button','Upload Completed Files');
 upload.type = 'button';
-alert('Selected files: ' + completedFiles.files.length);
 upload.onclick = async () => {
       if(!completedFiles.files.length) {
         alert('Please select completed files.');
