@@ -227,6 +227,8 @@ async function addDownloads(container,projectId) {
     line.append(makeElement('span',file.file_name+' '));
 
     const download = makeElement('button','Download');
+    download.type = 'button';
+
     download.onclick = async () => {
       const {data,error} = await supabase.storage
         .from('client-files')
@@ -236,23 +238,31 @@ async function addDownloads(container,projectId) {
         alert(error.message);
         return;
       }
-const response = await fetch(data.signedUrl);
-if(!response.ok) {
-  alert('Download failed: ' + response.status);
-  return;
-}
 
-const blob = await response.blob();
-const url = URL.createObjectURL(blob);
+      try {
+        const response = await fetch(data.signedUrl);
 
-const link = document.createElement('a');
-link.href = url;
-link.download = file.file_name;
-document.body.appendChild(link);
-link.click();
-link.remove();
+        if(!response.ok) {
+          alert('Download failed: ' + response.status);
+          return;
+        }
 
-URL.revokeObjectURL(url);
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = file.file_name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        setTimeout(() => URL.revokeObjectURL(url),1000);
+
+      } catch(error) {
+        alert('Download error: ' + error.message);
+      }
+    };
 
     line.append(download);
     container.append(line);
