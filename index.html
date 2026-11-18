@@ -388,6 +388,20 @@ async function loadClientProjects() {
   for(const project of data) {
     const card = makeElement('div','','project');
     card.append(makeElement('h3',project.project_name));
+    const deleteBtn = makeElement('button','Delete Project');
+deleteBtn.className = 'secondary';
+
+deleteBtn.onclick = async () => {
+  const confirmDelete = confirm(
+    'Are you sure you want to delete this project and all its files?'
+  );
+
+  if(!confirmDelete) return;
+
+  alert('Delete function will be connected next.');
+};
+
+card.append(deleteBtn);
     card.append(makeElement('p','Status: '+project.status,'status'));
     await addDownloads(card,project.id);
     area.append(card);
