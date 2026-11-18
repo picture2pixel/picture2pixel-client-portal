@@ -125,8 +125,6 @@ $('loginForm').addEventListener('submit', async e => {
 });
 
 async function openDashboard() {
-  $('login').classList.add('hidden');
-  $('dashboard').classList.remove('hidden');
   $('userEmail').textContent = currentUser.email;
 
   const {data,error} = await supabase
@@ -135,19 +133,41 @@ async function openDashboard() {
     .eq('user_id',currentUser.id)
     .maybeSingle();
 
-   if(error) {
+  if(error) {
     alert('Role Error: ' + error.message);
     return;
   }
 
   isAdmin = data?.role === 'admin';
-alert('User ID: ' + currentUser.id + '\nRole: ' + (data?.role ?? 'NOT FOUND'));
+
+  if(loginMode === 'admin' && !isAdmin) {
+    await supabase.auth.signOut();
+    currentUser = null;
+    alert('Please use an admin account.');
+    return;
+  }
+
+  if(loginMode === 'client' && isAdmin) {
+    await supabase.auth.signOut();
+    currentUser = null;
+    alert('Please use a client account.');
+    return;
+  }
+
+  $('login').classList.add('hidden');
+  $('dashboard').classList.remove('hidden');
+
   $('clientArea').classList.toggle('hidden',isAdmin);
   $('adminArea').classList.toggle('hidden',!isAdmin);
-  $('dashboardTitle').textContent = isAdmin ? 'Admin Dashboard' : 'My Dashboard';
 
-  if(isAdmin) await loadAdminProjects();
-  else await loadClientProjects();
+  $('dashboardTitle').textContent =
+    isAdmin ? 'Admin Dashboard' : 'My Dashboard';
+
+  if(isAdmin) {
+    await loadAdminProjects();
+  } else {
+    await loadClientProjects();
+  }
 }
 
 $('logout').onclick = async () => {
