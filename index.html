@@ -48,6 +48,11 @@ small{color:#64748b}
 <h2 id="dashboardTitle">My Dashboard</h2>
 <small id="userEmail"></small>
 <h3>Change Password</h3>
+ <input id="currentPassword" type="password" placeholder="Current Password">
+  <input id="newPassword" type="password" placeholder="New Password">
+  <input id="confirmPassword" type="password" placeholder="Confirm New Password">
+  <button id="changePassword" type="button">Change Password</button>
+  <p id="passwordMessage" class="message"></p>
 <button id="logout" class="secondary">Sign Out</button>
 </div>
 
@@ -177,7 +182,51 @@ $('logout').onclick = async () => {
   $('dashboard').classList.add('hidden');
   $('login').classList.remove('hidden');
 };
+$('changePassword').onclick = async () => {
+  const current = $('currentPassword').value;
+  const newPass = $('newPassword').value;
+  const confirm = $('confirmPassword').value;
 
+  if(!current || !newPass || !confirm) {
+    showMessage('passwordMessage','Please fill in all fields.');
+    return;
+  }
+
+  if(newPass.length < 6) {
+    showMessage('passwordMessage','New password must be at least 6 characters.');
+    return;
+  }
+
+  if(newPass !== confirm) {
+    showMessage('passwordMessage','New passwords do not match.');
+    return;
+  }
+
+  const {error:checkError} = await supabase.auth.signInWithPassword({
+    email:currentUser.email,
+    password:current
+  });
+
+  if(checkError) {
+    showMessage('passwordMessage','Current password is incorrect.');
+    return;
+  }
+
+  const {error} = await supabase.auth.updateUser({
+    password:newPass
+  });
+
+  if(error) {
+    showMessage('passwordMessage',error.message);
+    return;
+  }
+
+  $('currentPassword').value = '';
+  $('newPassword').value = '';
+  $('confirmPassword').value = '';
+
+  showMessage('passwordMessage','Password changed successfully!');
+};
 async function uploadOneFile(file,path,projectId) {
   const {error:uploadError} = await supabase.storage
     .from('client-files')
