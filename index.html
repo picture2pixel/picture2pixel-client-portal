@@ -108,6 +108,7 @@ if(loginMode === 'admin') {
   $('loginDescription').textContent = 'Sign in to manage client projects and files.';
 } else if(loginMode === 'client') {
   $('loginTitle').textContent = 'Client Login';
+  $('email').placeholder = 'Client Username';
   $('loginDescription').textContent = 'Sign in to upload images and download completed files.';
 }
 let currentUser = null;
