@@ -614,5 +614,41 @@ if (isRecovery) {
   currentUser = session.user;
   await openDashboard();
 }
+  $('resetPasswordForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const newPass = $('newRecoveryPassword').value;
+  const confirmPass = $('confirmRecoveryPassword').value;
+  const msg = $('resetMessage');
+
+  if (newPass !== confirmPass) {
+    msg.textContent = 'Passwords do not match.';
+    return;
+  }
+
+  if (newPass.length < 8) {
+    msg.textContent = 'Password must be at least 8 characters.';
+    return;
+  }
+
+  msg.textContent = 'Updating password...';
+
+  const { error } = await supabase.auth.updateUser({
+    password: newPass
+  });
+
+  if (error) {
+    msg.textContent = error.message;
+    return;
+  }
+
+  await supabase.auth.signOut({ scope: 'global' });
+
+  msg.textContent = 'Password updated. Please sign in with your new password.';
+
+  $('resetPassword').classList.add('hidden');
+  $('login').classList.remove('hidden');
+});
+  </script>
 </body>
 </html>
