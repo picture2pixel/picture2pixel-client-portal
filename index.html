@@ -105,6 +105,7 @@ const loginMode = new URLSearchParams(window.location.search).get('login');
 
 if(loginMode === 'admin') {
   $('loginTitle').textContent = 'Admin Login';
+  $('email').placeholder = 'Admin Email Address';
   $('loginDescription').textContent = 'Sign in to manage client projects and files.';
 } else if(loginMode === 'client') {
   $('loginTitle').textContent = 'Client Login';
