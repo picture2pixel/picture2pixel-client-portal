@@ -42,7 +42,48 @@ small{color:#64748b}
 </form>
 <p id="message" class="message"></p>
 </section>
+<section id="resetPassword" class="card login hidden">
+  <h2>Set New Password</h2>
+  <p>Enter your new password below.</p>
 
+  <form id="resetPasswordForm">
+    <input
+      id="newRecoveryPassword"
+      type="password"
+      placeholder="New Password"
+      required
+      minlength="6"
+    >
+
+    <input
+      id="confirmRecoveryPassword"
+      type="password"
+      placeholder="Confirm New Password"
+      required
+      minlength="6"
+    >
+
+    <button type="submit">Update Password</button>
+  </form>
+
+  <p id="resetMessage" class="message"></p>
+</section>
+  <section id="resetPassword" class="card login hidden">
+  <h2>Set New Password</h2>
+  <p>Create a new password for your account.</p>
+
+  <form id="resetPasswordForm">
+    <input id="newRecoveryPassword" type="password"
+      placeholder="New Password" required>
+
+    <input id="confirmRecoveryPassword" type="password"
+      placeholder="Confirm New Password" required>
+
+    <button type="submit">Update Password</button>
+  </form>
+
+  <p id="resetMessage" class="message"></p>
+</section>
 <section id="dashboard" class="hidden">
 <div class="card row">
 <div>
@@ -542,11 +583,36 @@ upload.onclick = async () => {
   }
 }
 
-const {data:{session}} = await supabase.auth.getSession();
-if(session) {
+const { data: { session } } = await supabase.auth.getSession();
+
+const isRecovery = window.location.hash.includes('type=recovery');
+
+if (isRecovery) {
+  if (!session) {
+    const params = new URLSearchParams(window.location.hash.substring(1));
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+
+    if (access_token && refresh_token) {
+      const { data, error } = await supabase.auth.setSession({
+        access_token,
+        refresh_token
+      });
+
+      if (error) {
+        alert('Recovery link expired. Please request a new one.');
+      } else if (data.session) {
+        $('login').classList.add('hidden');
+        $('resetPassword').classList.remove('hidden');
+      }
+    }
+  } else {
+    $('login').classList.add('hidden');
+    $('resetPassword').classList.remove('hidden');
+  }
+} else if (session) {
   currentUser = session.user;
   await openDashboard();
 }
-</script>
 </body>
 </html>
