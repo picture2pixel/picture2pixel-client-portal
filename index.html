@@ -124,14 +124,63 @@ function makeElement(tag, text, className) {
   return el;
 }
 
+
 $('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
   showMessage('message','Signing in...');
 
-  const {data,error} = await supabase.auth.signInWithPassword({
-    email:$('email').value.trim(),
-    password:$('password').value
-  });
+  const loginValue = $('email').value.trim();
+  const password = $('password').value;
+
+  if(loginMode === 'admin') {
+    const {data,error} = await supabase.auth.signInWithPassword({
+      email: loginValue,
+      password: password
+    });
+
+    if(error) {
+      showMessage('message',error.message);
+      return;
+    }
+
+    currentUser = data.user;
+
+  } else {
+    const {data,error} = await supabase.functions.invoke(
+      'client-username-login',
+      {
+        body: {
+          username: loginValue,
+          password: password
+        }
+      }
+    );
+
+    if(error || !data?.access_token || !data?.refresh_token) {
+      showMessage(
+        'message',
+        data?.error || error?.message || 'Login failed.'
+      );
+      return;
+    }
+
+    const {data:sessionData,error:sessionError} =
+      await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token
+      });
+
+    if(sessionError) {
+      showMessage('message',sessionError.message);
+      return;
+    }
+
+    currentUser = sessionData.user;
+  }
+
+  await openDashboard();
+});
+
 
   if(error) {
     showMessage('message',error.message);
