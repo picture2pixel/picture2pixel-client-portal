@@ -389,12 +389,6 @@ async function loadClientProjects() {
     area.append(card);
   }
 }
-    async function loadAdminProjects() {
-    card.append(makeElement('p','Status: '+project.status,'status'));
-    await addDownloads(card,project.id);
-    area.append(card);
-  }
-}
 
 async function loadAdminProjects() {
   const area = $('adminProjects');
