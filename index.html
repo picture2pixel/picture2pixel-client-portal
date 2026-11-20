@@ -143,7 +143,7 @@ const SUPABASE_KEY = 'sb_publishable_FAS6F2L3Pa1qafOpJYbqhA_dsZ6wrox';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
 const loginMode = new URLSearchParams(window.location.search).get('login');
-
+console.log('Login Mode:', loginMode);
 if(loginMode === 'admin') {
   $('loginTitle').textContent = 'Admin Login';
   $('email').placeholder = 'Admin Email Address';
