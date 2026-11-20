@@ -631,7 +631,7 @@ if (isRecovery) {
   });
 
   if (error) {
-    msg.textContent = error.message;
+    msg.textContent = 'Password update error: ' + error.message;
     return;
   }
 
