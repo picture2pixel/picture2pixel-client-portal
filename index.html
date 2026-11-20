@@ -225,14 +225,7 @@ $('loginForm').addEventListener('submit', async e => {
 });
 
 
-  if(error) {
-    showMessage('message',error.message);
-    return;
-  }
 
-  currentUser = data.user;
-  await openDashboard();
-});
 
 async function openDashboard() {
   $('userEmail').textContent = currentUser.email;
